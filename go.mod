@@ -1,3 +1,3 @@
-module github.com/Emperor42/veni
+module veni
 
-go 1.23.0
+go 1.24.3
