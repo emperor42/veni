@@ -8,7 +8,8 @@ import (
 )
 
 type VeniHandler interface {
-	Process(w http.ResponseWriter, r *http.Request) http.ResponseWriter
+	Process(w http.ResponseWriter, r *http.Request)
+	AddRoute(routeName string, handle func(http.ResponseWriter, *http.Request))
 }
 
 type VeniContext struct {
@@ -24,29 +25,37 @@ type VeniContext struct {
 	GetAPI     VeniHandler
 }
 
-func (v *VeniContext) Process(w http.ResponseWriter, r *http.Request) http.ResponseWriter {
+func (v *VeniContext) Process(w http.ResponseWriter, r *http.Request) {
 	base := path.Base(r.URL.Path)
 	switch strings.ToLower(base) {
 	case "get":
-		return v.GetAPI.Process(w, r)
+		v.GetAPI.Process(w, r)
 	case "head":
-		return v.HeadAPI.Process(w, r)
+		v.HeadAPI.Process(w, r)
 	case "options":
-		return v.OptionsAPI.Process(w, r)
+		v.OptionsAPI.Process(w, r)
 	case "trace":
-		return v.TraceAPI.Process(w, r)
+		v.TraceAPI.Process(w, r)
 	case "put":
-		return v.PutAPI.Process(w, r)
+		v.PutAPI.Process(w, r)
 	case "delete":
-		return v.DeleteAPI.Process(w, r)
+		v.DeleteAPI.Process(w, r)
 	case "post":
-		return v.PostAPI.Process(w, r)
+		v.PostAPI.Process(w, r)
 	case "patch":
-		return v.PatchAPI.Process(w, r)
+		v.PatchAPI.Process(w, r)
 	case "connect":
-		return v.ConnectAPI.Process(w, r)
+		v.ConnectAPI.Process(w, r)
+	}
+}
+
+func (v *VeniContext) Comply(r *http.Request) bool {
+	base := path.Base(r.URL.Path)
+	switch strings.ToLower(base) {
+	case "get", "head", "options", "trace", "put", "delete", "post", "patch", "connect":
+		return true
 	default:
-		return w
+		return false
 	}
 }
 
