@@ -10,6 +10,7 @@ import (
 type VeniHandler interface {
 	Process(w http.ResponseWriter, r *http.Request)
 	AddRoute(routeName string, handle func(http.ResponseWriter, *http.Request))
+	RemoveRoute(routeName string)
 }
 
 type VeniContext struct {
@@ -23,6 +24,30 @@ type VeniContext struct {
 	OptionsAPI VeniHandler
 	HeadAPI    VeniHandler
 	GetAPI     VeniHandler
+}
+
+func (v *VeniContext) AddRoute(routeName string, handle func(http.ResponseWriter, *http.Request)) {
+	v.ConnectAPI.AddRoute(routeName, handle)
+	v.PatchAPI.AddRoute(routeName, handle)
+	v.PostAPI.AddRoute(routeName, handle)
+	v.DeleteAPI.AddRoute(routeName, handle)
+	v.PutAPI.AddRoute(routeName, handle)
+	v.TraceAPI.AddRoute(routeName, handle)
+	v.OptionsAPI.AddRoute(routeName, handle)
+	v.HeadAPI.AddRoute(routeName, handle)
+	v.GetAPI.AddRoute(routeName, handle)
+}
+
+func (v *VeniContext) RemoveRoute(routeName string) {
+	v.ConnectAPI.RemoveRoute(routeName)
+	v.PatchAPI.RemoveRoute(routeName)
+	v.PostAPI.RemoveRoute(routeName)
+	v.DeleteAPI.RemoveRoute(routeName)
+	v.PutAPI.RemoveRoute(routeName)
+	v.TraceAPI.RemoveRoute(routeName)
+	v.OptionsAPI.RemoveRoute(routeName)
+	v.HeadAPI.RemoveRoute(routeName)
+	v.GetAPI.RemoveRoute(routeName)
 }
 
 func (v *VeniContext) Process(w http.ResponseWriter, r *http.Request) {
