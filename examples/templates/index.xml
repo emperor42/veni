@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VENI Web Components Demo</title>
+    <style>
+        /* Base styles */
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --background-color: #f4f4f9;
+            --text-color: #333;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .demo-section {
+            margin-bottom: 3rem;
+        }
+
+        .demo-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--secondary-color);
+        }
+
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--border-color);
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* VENI debug indicator */
+        .veni-indicator {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            opacity: 0.8;
+            display: none;
+        }
+
+        /* Show indicator if VENI processed the page */
+        body:has([x-veni-processed="true"]) .veni-indicator {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🚀 VENI Web Components Demo</h1>
+        <p class="subtitle">Zero-dependency middleware for automatic web component injection</p>
+    </header>
+
+    <main>
+        <!-- Section 1: Hello World Component -->
+        <section class="demo-section">
+            <h2>1. Greeting Component</h2>
+            <p>The <code>&lt;hello-world&gt;</code> component demonstrates basic Shadow DOM usage with dynamic attributes.</p>
+            
+            <hello-world name="Visitor"></hello-world>
+            <hello-world name="Developer"></hello-world>
+            <hello-world name="VENI"></hello-world>
+        </section>
+
+        <!-- Section 2: User Card Components -->
+        <section class="demo-section">
+            <h2>2. User Profile Cards</h2>
+            <p>The <code>&lt;user-card&gt;</code> component shows how to handle multiple attributes and fallback values.</p>
+            
+            <div class="component-grid">
+                <user-card 
+                    name="Alice Johnson"
+                    email="alice@example.com"
+                    role="Frontend Developer"
+                    avatar="https://via.placeholder.com/60/667eea/ffffff?text=AJ">
+                </user-card>
+
+                <user-card 
+                    name="Bob Smith"
+                    email="bob@example.com"
+                    role="Backend Engineer">
+                </user-card>
+
+                <user-card 
+                    name="Carol Williams"
+                    email="carol@example.com"
+                    role="DevOps Specialist"
+                    avatar="https://via.placeholder.com/60/764ba2/ffffff?text=CW">
+                </user-card>
+
+                <user-card 
+                    name="David Brown"
+                    email="david@example.com">
+                </user-card>
+            </div>
+        </section>
+
+        <!-- Section 3: Statistics Panel -->
+        <section class="demo-section">
+            <h2>3. Statistics Dashboard</h2>
+            <p>The <code>&lt;stats-panel&gt;</code> component demonstrates data visualization with numeric attributes.</p>
+            
+            <stats-panel 
+                total-users="1,247"
+                active-users="89"
+                sessions-today="342"
+                avg-session="12m 34s">
+            </stats-panel>
+        </section>
+
+        <!-- Section 4: Mixed Usage -->
+        <section class="demo-section">
+            <h2>4. Mixed Component Usage</h2>
+            <p>Multiple components can coexist and interact within the same page layout.</p>
+            
+            <div class="component-grid">
+                <hello-world name="Team"></hello-world>
+                <user-card 
+                    name="Project Lead"
+                    email="lead@example.com"
+                    role="Technical Director">
+                </user-card>
+                <stats-panel 
+                    total-users="500"
+                    active-users="42">
+                </stats-panel>
+            </div>
+        </section>
+
+        <!-- Section 5: Nested Content -->
+        <section class="demo-section">
+            <h2>5. Component with Slot Content</h2>
+            <p>Some components support slotted content for flexible customization.</p>
+            
+            <user-card 
+                name="Custom User"
+                email="custom@example.com">
+                <p slot="bio">This is a custom bio that can be passed as slot content.</p>
+            </user-card>
+        </section>
+    </main>
+
+    <footer>
+        <p>Built with <strong>VENI</strong> - Part of the Veni, Vidi, Vici project suite</p>
+        <p>© 2024 Emperor42. MIT Licensed.</p>
+    </footer>
+
+    <!-- VENI debug indicator -->
+    <div class="veni-indicator">✓ VENI Processed</div>
+</body>
+</html>
