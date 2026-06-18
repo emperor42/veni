@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>veni - Visual Web Crawler</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+<h1>veni</h1>
+<p>Visual Web Crawler & Link Mapper</p>
+<a href="https://www.azzurro.tech" class="back">Go to Azzurro Technology</a>
+</header>
+<main>
+<section class="intro">
+<p>Enter a URL to crawl. Results are shown as an interactive tree using <code>&lt;details&gt;</code> elements. Breadcrumb shows the crawl path.</p>
+</section>
+<section class="controls">
+<form id="crawl-form">
+<input type="url" id="url-input" placeholder="https://example.com" required>
+<input type="number" id="depth-input" placeholder="Depth (default 2)" value="2" min="1" max="3">
+<button type="submit" class="button">Crawl</button>
+</form>
+</section>
+<section id="breadcrumb" class="breadcrumb" style="display:none;"></section>
+<section id="results" class="results"></section>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>
