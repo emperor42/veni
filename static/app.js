@@ -1,70 +1,127 @@
-document.getElementById("crawl-form").addEventListener("submit", async function(e) {
-	e.preventDefault();
-	var url = document.getElementById("url-input").value;
-	var depth = document.getElementById("depth-input").value || 2;
+"use strict";
+
+(function () {
+	var form = document.getElementById("crawl-form");
 	var results = document.getElementById("results");
 	var breadcrumb = document.getElementById("breadcrumb");
-	results.innerHTML = '<p class="loading">Crawling <strong>' + url + '</strong>...</p>';
-	breadcrumb.style.display = "none";
-	var res = await fetch("/crawl?url=" + encodeURIComponent(url) + "&depth=" + depth);
-	var data = await res.json();
-	if (!data) {
-		results.innerHTML = '<p class="error">Failed to crawl URL.</p>';
-		return;
-	}
-	renderBreadcrumb(data);
-	results.innerHTML = renderNode(data);
-});
 
-function renderBreadcrumb(node) {
-	var el = document.getElementById("breadcrumb");
-	el.style.display = "block";
-	var html = '<span>Crawl Path:</span> ';
-	if (node.path) {
-		node.path.forEach(function(p, i) {
-			html += '<a href="' + p + '" target="_blank">' + p + '</a>';
-			if (i < node.path.length - 1) html += ' → ';
+	if (!form || !results || !breadcrumb) return;
+
+	form.addEventListener("submit", async function (event) {
+		event.preventDefault();
+		var url = document.getElementById("url-input").value.trim();
+		var depth = document.getElementById("depth-input").value || "2";
+		clearBreadcrumb();
+		results.replaceChildren(textElement("p", "loading", "Crawling " + url + "…"));
+
+		try {
+			var data = await fetchCrawl(url, Number(depth), []);
+			if (!data) throw new Error("empty crawl response");
+			renderBreadcrumb(data);
+			results.replaceChildren(renderNode(data));
+		} catch (error) {
+			results.replaceChildren(textElement("p", "error", "Failed to crawl URL."));
+		}
+	});
+
+	async function fetchCrawl(url, depth, path) {
+		var query = new URLSearchParams({ url: url, depth: String(depth) });
+		if (path && path.length) query.set("path", JSON.stringify(path));
+		var response = await fetch("/crawl?" + query.toString(), { headers: { Accept: "application/json" } });
+		if (!response.ok) throw new Error("crawl request failed");
+		return response.json();
+	}
+
+	function renderBreadcrumb(node) {
+		breadcrumb.replaceChildren();
+		breadcrumb.hidden = false;
+		breadcrumb.style.display = "block";
+		breadcrumb.appendChild(textElement("span", "", "Crawl Path:"));
+		var path = Array.isArray(node.path) ? node.path : [];
+		path.forEach(function (entry, index) {
+			if (index > 0) breadcrumb.appendChild(document.createTextNode(" → "));
+			var link = document.createElement("a");
+			link.textContent = String(entry);
+			var safeURL = safeCrawlURL(entry);
+			if (safeURL) {
+				link.href = safeURL;
+				link.target = "_blank";
+				link.rel = "noopener noreferrer";
+			}
+			breadcrumb.appendChild(link);
 		});
 	}
-	el.innerHTML = html;
-}
 
-function renderNode(node) {
-	if (!node) return "";
-	var isError = node.title && node.title.startsWith("Error");
-	var html = "<details" + (node.depth > 1 ? "" : " open") + ">";
-	var title = isError ? '<span class="error">' + node.title + '</span>' : node.title;
-	html += "<summary>" + title + " <small>(" + node.url + ")</small></summary>";
-	html += '<div class="node-content">' + escapeHtml(node.content) + '</div>';
-	if (node.url && node.depth > 0) {
-		html += '<button class="continue-btn" onclick="continueCrawl(\'' + escapeJs(node.url) + '\',' + (node.depth - 1) + ')">Continue down this path</button>';
+	function clearBreadcrumb() {
+		breadcrumb.replaceChildren();
+		breadcrumb.hidden = true;
+		breadcrumb.style.display = "none";
 	}
-	if (node.links && node.links.length > 0) {
-		node.links.forEach(function(link) {
-			html += renderNode(link);
-		});
+
+	function renderNode(node) {
+		if (!node || typeof node !== "object") return document.createTextNode("");
+
+		var details = document.createElement("details");
+		if (Number(node.depth) <= 1) details.open = true;
+		var summary = document.createElement("summary");
+		var titleText = String(node.title == null ? "No Title" : node.title);
+		var title = textElement("span", titleText.indexOf("Error:") === 0 ? "error" : "", titleText);
+		summary.appendChild(title);
+		summary.appendChild(textElement("small", "", " (" + String(node.url == null ? "" : node.url) + ")"));
+		details.appendChild(summary);
+
+		var content = textElement("div", "node-content", String(node.content == null ? "" : node.content));
+		details.appendChild(content);
+
+		if (node.url && Number(node.depth) > 0) {
+			var continueButton = document.createElement("button");
+			continueButton.type = "button";
+			continueButton.className = "continue-btn";
+			continueButton.textContent = "Continue down this path";
+			continueButton.addEventListener("click", function () {
+				continueCrawl(String(node.url), Number(node.depth) - 1, Array.isArray(node.path) ? node.path : []);
+			});
+			details.appendChild(continueButton);
+		}
+
+		if (Array.isArray(node.links)) {
+			node.links.forEach(function (link) {
+				details.appendChild(renderNode(link));
+			});
+		}
+		return details;
 	}
-	html += "</details>";
-	return html;
-}
 
-async function continueCrawl(url, depth) {
-	if (depth <= 0) { alert("Max depth reached"); return; }
-	var results = document.getElementById("results");
-	var res = await fetch("/crawl?url=" + encodeURIComponent(url) + "&depth=" + depth);
-	var data = await res.json();
-	if (!data) return;
-	results.innerHTML = renderBreadcrumb(data) || "";
-	results.innerHTML = renderNode(data);
-}
+	async function continueCrawl(url, depth, path) {
+		if (depth <= 0) {
+			window.alert("Max depth reached");
+			return;
+		}
+		results.replaceChildren(textElement("p", "loading", "Crawling " + url + "…"));
+		try {
+			var data = await fetchCrawl(url, depth, path);
+			if (!data) throw new Error("empty crawl response");
+			renderBreadcrumb(data);
+			results.replaceChildren(renderNode(data));
+		} catch (error) {
+			results.replaceChildren(textElement("p", "error", "Failed to continue crawl."));
+		}
+	}
 
-function escapeHtml(text) {
-	if (!text) return "";
-	var d = document.createElement("div");
-	d.textContent = text;
-	return d.innerHTML;
-}
+	function textElement(tagName, className, text) {
+		var element = document.createElement(tagName);
+		if (className) element.className = className;
+		element.textContent = text;
+		return element;
+	}
 
-function escapeJs(text) {
-	return text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-}
+	function safeCrawlURL(value) {
+		try {
+			var parsed = new URL(String(value));
+			if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+			return parsed.href;
+		} catch (error) {
+			return "";
+		}
+	}
+})();

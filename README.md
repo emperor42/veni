@@ -1,546 +1,215 @@
-# VENI (Web Component Discovery System)
+# VENI
 
-**MIT License © Matthew Salvatore Giancola**
+VENI is two small, independent pieces:
 
-## Overview
+1. `veni.js` is a browser helper for discovering and registering custom-element
+   tags already present in a page.
+2. `main.go` is an optional visual web-crawler demo. It is useful for trying
+   the browser UI locally; it is not the component library and it is not a
+   production web-crawler service.
 
-VENI is a JavaScript-based solution designed to discover and integrate HTML web components. It automatically identifies and adds web components to the Document object for reuse throughout web applications. No web server is required - it works with static HTML pages and can be fully embedded in script tags.
+The Go demo and the browser helper do not share an API or a network protocol.
+`legacy/` contains parked historical material and is not part of the supported
+runtime.
 
-## Installation
+## Browser helper (`veni.js`)
 
-### Prerequisites
-- Modern web browser with JavaScript support
-- No external server dependencies required
+### Requirements and loading
 
-### Installation Steps
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/emperor42/veni.git
-   cd veni
-   ```
-
-2. Include VENI in your HTML:
-   ```html
-   <!-- Option 1: Direct script tag -->
-   <script src="veni.js"></script>
-
-   <!-- Option 2: Local file -->
-   <script>
-   // VENI will automatically discover and register components
-   </script>
-   ```
-
-3. For Node.js development (optional):
-   ```bash
-   # Install Node.js build tools if needed
-   npm install
-   
-   # Build for distribution (optional)
-   npm run build
-   ```
-
-## Usage (Standalone)
-
-### Basic Usage
-
-```javascript
-// Basic VENI usage
-<script src="veni.js"></script>
-
-// VENI will automatically discover components
-// Components are available via window.VENI API
-
-// Example: Use discovered components
-const component = window.VENI.getComponent('my-component');
-component.render();
-```
-
-### Advanced Usage
-
-```javascript
-// Initialize VENI with configuration
-const veni = new VENI({
-    autoDiscover: true,
-    templateFile: 'components.html',
-    customSelectors: ['.ven-component', '[data-venue]'],
-    logLevel: 'info'
-});
-
-// Discover components from specific file
-veni.discoverFromFile('components.html');
-
-// Discover components from current HTML
-veni.discoverFromCurrent();
-
-// Get all discovered components
-const components = veni.getComponents();
-
-// Get component by name
-const specificComponent = veni.getComponent('header-component');
-
-// Register custom component
-veni.registerComponent('custom-widget', {
-    template: 'custom-template.html',
-    styles: 'custom-widget.css'
-});
-```
-
-### API Endpoints
-
-| Method | Description |
-|--------|-------------|
-| `new VENI(options)` | Create new VENI instance |
-| `veni.discoverFromFile(filename)` | Discover components from file |
-| `veni.discoverFromCurrent()` | Discover components from current HTML |
-| `veni.getComponents()` | Get all discovered components |
-| `veni.getComponent(name)` | Get specific component |
-| `veni.registerComponent(name, config)` | Register custom component |
-| `veni.setAutoDiscover(enabled)` | Enable/disable auto-discovery |
-| `veni.setLogLevel(level)` | Set log level |
-
-### Example HTML Page
+The helper uses browser platform APIs: `Custom Elements`, `HTMLElement`,
+`Shadow DOM`, `DOMContentLoaded`, and `Set`. Load it with a normal script:
 
 ```html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>VENI Component Demo</title>
-    <!-- Include VENI -->
-    <script src="venI.js"></script>
-    
-    <!-- Your content -->
-    <!-- VENI will discover components from this file -->
-    <!-- <my-component>My Custom Component</my-component> -->
-</head>
-<body>
-    <!-- Discovered components will be available here -->
-    <div id="content"></div>
-    
-    <!-- Use discovered components -->
-    <script>
-    // After VENI loads, components are available
-    document.addEventListener('VENI-ready', function() {
-        const headerComponent = window.VENI.getComponent('my-component');
-        if (headerComponent) {
-            headerComponent.render(document.getElementById('content'));
-        }
-    });
-    </script>
-</body>
-</html>
+<script src="/path/to/veni.js"></script>
 ```
 
-## Integration with ATP
+When loaded in a browser it exposes:
 
-### Component Integration
+- `window.Veni` — the `Veni` class.
+- `window.veni` — an automatically initialized singleton.
 
-VENI integrates with ATP to provide centralized component management:
+It has no npm build step and makes no network requests. The script is plain
+JavaScript, not a module.
 
-```javascript
-// VENI with ATP integration
-const veni = new VENI({
-    autoDiscover: true,
-    templateEndpoint: 'https://api.example.com/atp/templates',
-    componentEndpoint: 'https://api.example.com/atp/components',
-    syncWithATP: true,
-    onComponentsLoaded: function(components) {
-        // Process ATP-integrated components
-        components.forEach(component => {
-            window.VENI.registerComponent(component.name, component.config);
-        });
+### Minimal example
+
+```html
+<template id="t-x-card" data-component="x-card">
+  <x-card></x-card>
+</template>
+<script src="veni.js"></script>
+<script>
+  class XCard extends HTMLElement {
+    connectedCallback() {
+      this.textContent = this.textContent || "A card";
     }
-});
-
-// Synchronize with ATP
-veni.syncWithATP().then(() => {
-    console.log('Components synchronized with ATP');
-    const atpComponents = veni.getComponents();
-    console.log(`Loaded ${atpComponents.length} components from ATP`);
-});
-```
-
-### Component Discovery
-
-```javascript
-// Discover components from ATP
-const discoverFromATP = async () => {
-    try {
-        const response = await fetch('/atp/api/components');
-        const components = await response.json();
-        
-        components.forEach(component => {
-            window.VENI.registerComponent(component.name, {
-                template: component.html,
-                styles: component.css,
-                scripts: component.js,
-                attributes: component.attributes
-            });
-        });
-        
-        console.log(`Discovered ${components.length} components from ATP`);
-    } catch (error) {
-        console.error('Failed to discover components from ATP:', error);
-    }
-};
-```
-
-### Configuration Distribution
-
-```javascript
-// VENI configuration for ATP integration
-const veniConfig = {
-    autoDiscover: true,
-    discoveryInterval: 30000, // 30 seconds
-    templateFile: 'components.html',
-    customSelectors: ['.venue-component', '[data-venue]'],
-    apiEndpoint: '/atp/api/components',
-    syncStrategy: 'merge', // merge, replace, append
-    onSync: function(data) {
-        console.log('Components synchronized:', data);
-    },
-    onError: function(error) {
-        console.error('Component discovery error:', error);
-    }
-};
-```
-
-## Development Setup
-
-### Local Development
-
-```bash
-# Test in browser
-# Open browser and load:
-# http://localhost:8080/venI.html
-# (Load all VENI components)
-
-# Or with Node.js
-node -e "require('veni').test()"
-```
-
-### Testing
-
-```javascript
-// Basic VENI usage test
-const VENI = window.VENI;
-
-const testVeni = () => {
-    // Test VENI initialization
-    const veni = new VENI({
-        autoDiscover: true,
-        templateFile: 'components.html'
-    });
-    
-    expect(veni).toBeDefined();
-    expect(veni.autoDiscover).toBe(true);
-    
-    // Test component discovery
-    veni.discoverFromCurrent();
-    const components = veni.getComponents();
-    expect(components).toBeDefined();
-};
-
-// Component registration test
-const testComponentRegistration = () => {
-    const veni = new VENI();
-    
-    veni.registerComponent('test-component', {
-        template: '<div>Test Component</div>',
-        styles: 'test-component.css'
-    });
-    
-    const component = veni.getComponent('test-component');
-    expect(component).toBeDefined();
-    expect(component.name).toBe('test-component');
-};
-```
-
-### Building
-
-```bash
-# Build for distribution
-npm run build
-
-# Output: dist/veni.js (optimized and bundled)
-
-# Test in browser
-# Open browser and load: dist/veni.js
-```
-
-## API Specifications
-
-### High Maturity API (Event-driven)
-
-#### Component Management
-- `new VENI(options)` - Create new VENI instance
-- `veni.discoverFromFile(filename)` - Discover components from file
-- `veni.discoverFromCurrent()` - Discover components from current HTML
-- `veni.getComponents()` - Get all discovered components
-- `veni.getComponent(name)` - Get specific component
-- `veni.registerComponent(name, config)` - Register custom component
-- `veni.setAutoDiscover(enabled)` - Enable/disable auto-discovery
-- `veni.setLogLevel(level)` - Set log level
-
-#### Component Discovery
-```javascript
-// Discover components from file
-veni.discoverFromFile('components.html');\n
-// Discover components from current HTML
-veni.discoverFromCurrent();
-
-// Get all discovered components
-const components = veni.getComponents();
-
-// Get specific component
-const component = veni.getComponent('header-component');
-
-// Register custom component
-veni.registerComponent('custom-widget', {
-    template: 'custom-template.html',
-    styles: 'custom-widget.css'
-});
-```
-
-### VENI-specific Events
-
-```javascript
-// Component discovery event
-veni.on('component-discovered', (event) => {
-    const { component } = event;
-    console.log(`Component discovered: ${component.name}`);
-});
-
-// Component registration event
-veni.on('component-registered', (event) => {
-    const { component } = event;
-    console.log(`Component registered: ${component.name}`);
-});
-
-// Component discovery complete event
-veni.on('discovery-complete', (event) => {
-    const { componentCount } = event;
-    console.log(`Discovery complete: ${componentCount} components found`);
-});
-```
-
-## Security API
-
-### Component Security
-- `veni.setSecureMode(enabled)` - Enable secure mode
-- `veni.setTrustedOrigins(origins)` - Set trusted origins
-- `veni.validateComponent(component)` - Validate component security
-- `veni.sanitizeComponent(component)` - Sanitize component
-
-### Discovery Security
-- `veni.setAutoDiscover(secure)` - Secure auto-discovery
-- `veni.setDiscoveryTimeout(timeout)` - Set discovery timeout
-- `veni.enableDiscoveryValidation(enabled)` - Enable discovery validation
-
-## Integration API
-
-### VENI Integration
-- `veni.syncWithATP(config)` - Synchronize with ATP
-- `veni.getVENIComponents()` - Get VENI components
-- `veni.applyVENIComponents(components)` - Apply VENI components
-
-### VENI Component Integration
-```javascript
-// Synchronize with VENI
-veni.syncWithATP({
-    endpoint: '/atp/api/components',
-    strategy: 'merge',
-    onSuccess: function(components) {
-        console.log('Components synchronized:', components.length);
-    }
-});
-
-// Get VENI components
-const components = veni.getVENIComponents();
-
-// Apply VENI components
-veni.applyVENIComponents(components);
-```
-
-## Monitoring API
-
-### Component Monitoring
-- `veni.onComponentAdded(callback)` - Component added callback
-- `veni.getComponentLogs()` - Get component logs
-- `veni.getComponentMetrics()` - Get component metrics
-
-### Discovery Monitoring
-- `veni.onDiscoveryStart(callback)` - Discovery start callback
-- `veni.onDiscoveryComplete(callback)` - Discovery complete callback
-- `veni.getDiscoveryLogs()` - Get discovery logs
-
-## Error Handling
-
-### VENI Error Types
-- `ComponentError` - Component discovery errors
-- `SecurityError` - Security-related errors
-- `ValidationError` - Input validation errors
-- `IntegrationError` - Integration-related errors
-
-### Error Response Format
-```javascript
-// VENI errors
-class VENIError extends Error {
-  constructor(message, code, details) {
-    super(message);
-    this.code = code;
-    this.details = details;
-    this.timestamp = new Date().toISOString();
   }
-}
+
+  const registry = new Veni({ registry: { "x-card": XCard } });
+  registry.init(document);
+</script>
 ```
 
-## Testing
+`init()` scans the current document and the contents of `<template>`
+elements. A discovered tag is registered only when its constructor is already
+in the instance's `registry`; unknown tags are recorded as pending. Existing
+custom elements are not redefined.
 
-### Unit Tests
+The automatically created `window.veni` instance has an empty registry. Code
+that loads constructors later can use the same singleton:
 
-```javascript
-// Test VENI initialization
- test('VENI Initialization', () => {
-   const veni = new VENI({
-     autoDiscover: true,
-     templateFile: 'components.html'
-   });
-   expect(veni).toBeDefined();
-   expect(veni.autoDiscover).toBe(true);
- });
-
-// Test component discovery
- test('Component Discovery', () => {
-   const veni = new VENI({
-     autoDiscover: true,
-     templateFile: 'components.html'
-   });
-   
-   veni.discoverFromCurrent();
-   const components = veni.getComponents();
-   expect(components).toBeDefined();
- });
-
-// Test component registration
- test('Component Registration', () => {
-   const veni = new VENI();
-   
-   veni.registerComponent('test-component', {
-     template: '<div>Test Component</div>',
-     styles: 'test-component.css'
-   });
-   
-   const component = veni.getComponent('test-component');
-   expect(component).toBeDefined();
-   expect(component.name).toBe('test-component');
- });
-```
-
-### Integration Tests
-
-```javascript
-// Test VENI integration
- test('VENI-ATP Integration', () => {
-   const veni = new VENI({
-     autoDiscover: true,
-     apiEndpoint: '/atp/api/components'
-   });
-   
-   veni.syncWithATP().then(() => {
-     const components = veni.getComponents();
-     expect(components).toBeDefined();
-   });
- });
-```
-
-## Performance Considerations
-
-- **Memory Usage**: Monitor for large component sets
-- **CPU Usage**: Optimize component discovery algorithms
-- **Network I/O**: Cache frequently accessed components
-- **Disk I/O**: Use efficient storage for component data
-- **Concurrent Processing**: Support for concurrent component discovery
-
-## Future Enhancements
-
-- **Advanced Discovery**: AI-powered component discovery
-- **Component Templates**: Component template generation
-- **Component Analytics**: Component usage analytics
-- **Advanced Integration**: Enhanced integration capabilities
-- **Cloud Integration**: Integrate with cloud component services
-
-## Troubleshooting
-
-### Common Issues
-
-1. **VENI not loading**
-   ```javascript
-   // Check VENI configuration
-   const veni = new VENI({
-     autoDiscover: true,
-     templateFile: 'components.html'
-   });
-   
-   // Test VENI initialization
-   console.log('VENI initialized:', veni);
-   ```
-
-2. **Component discovery errors**
-   ```javascript
-   // Check component discovery
-   veni.discoverFromCurrent();
-   
-   // Check component logs
-   const logs = veni.getComponentLogs();
-   console.log(logs);
-   ```
-
-3. **Event listener issues**
-   ```javascript
-   // Check event listener registration
-   veni.on('component-discovered', (event) => {
-     console.log('Component discovered:', event.component);
-   });
-   ```
-
-### Debugging Commands
-
-```javascript
-// Enable debug logging
-veni.setLogLevel('debug');
-
-// Check component logs
-const logs = veni.getComponentLogs();
-console.log(logs);
-
-// Monitor component discovery
-veni.on('discovery-start', () => {
-    console.log('Component discovery started');
+```js
+veni.define("x-counter", class Counter extends HTMLElement {
+  connectedCallback() {
+    this.textContent = this.textContent || "0";
+  }
 });
 ```
 
-## Conclusion
+### Actual API
 
-VENI provides an automated web component discovery and registration solution that simplifies the process of working with web components. It automatically discovers and registers components, making them available for use throughout a web application without complex setup processes.
+| API | Behavior |
+| --- | --- |
+| `new Veni({ registry, handlers })` | Creates an independent helper instance. `registry` maps tag names to constructors. |
+| `instance.init()` | Scans `document` and template contents; registers matching registry entries. Returns the instance. |
+| `instance.pending()` | Returns sorted names discovered but not defined. |
+| `instance.autodefine()` | Defines pending names with a small shadow-DOM slot stub. Returns the names defined. |
+| `instance.define(name, ctor)` | Defines one custom element. Returns the normalized name or `null` on failure. |
+| `instance.register(name, ctor)` | Alias for `define`. |
+| `instance.defineAll(map)` | Defines a map of constructors and returns the successful names. |
+| `instance.fromTemplate(template, ctor?)` | Derives a valid custom-element name from `data-component`, `data-name`, or an `id`, then defines it. |
+| `instance.list()` | Returns the names tracked as defined by this instance. |
+| `instance.discover(root)` | Returns currently undefined custom-element tags below `root`. |
+| `instance.isDefined(name)` | Checks the browser's global `customElements` registry. |
+| `instance.on(name, "created", callback)` | Installs the limited `created` hook by wrapping the constructor's `connectedCallback`. Other event names are not dispatched by this file. |
 
-Key benefits:
+Names must satisfy the browser's custom-element rules: lowercase, begin with a
+letter, contain a hyphen, and end alphanumeric. Invalid names return `null` or
+are assigned the `x-component` fallback by `fromTemplate()`.
 
-- **Automatic Discovery**: Automatic component discovery without manual configuration
-- **WebComponent Integration**: Uses JavaScript standard WebComponent class
-- **Flexible Templates**: Can work with specific template files or components in existing HTML
-- **Embeddable Solution**: Can be fully embedded in script tags within static pages
-- **No Server Requirement**: Operates independently without needing a web server
-- **Secure Integration**: Secure integration with ATP platform
-- **Production Ready**: Comprehensive error handling and monitoring
+### What the helper does not do
 
-The VENI implementation is production-ready and can be easily integrated into web applications with comprehensive web component discovery and registration capabilities.
+- It does not parse component source code or fetch templates.
+- It does not know about ATP, VIDI, VICI, or VINI and has no server endpoints.
+- It does not sanitize HTML, isolate constructors, or provide a security
+  boundary. Registering a constructor executes the application's code with the
+  page's privileges.
+- `autodefine()` is a presentation convenience (a shadow root containing a
+  slot), not a sandbox. Do not use it to make untrusted markup safe.
 
----
+The `registry`/`handlers` options and the automatic boot behavior are the
+actual surface of the current file; older documentation that described page
+CRUD, ATP synchronization, or a `window.VENI` API does not apply.
 
-*Document Version: 1.0*
-*Created: 2026-08-25*
-*Last Updated: 2026-08-25*
-*Status: Production Ready*
+## Optional Go crawler demo
 
-**License:** MIT License © Matthew Salvatore Giancola.
+The Go program renders the small form at `/`, calls `/crawl`, and serves its
+assets from `/static/`. It uses only the Go standard library.
+
+### Run locally
+
+From this directory:
+
+```sh
+gofmt -w main.go
+go run .
+```
+
+The default listener is `127.0.0.1:8087`. The loopback bind is intentional. The
+`/crawl` endpoint is unauthenticated only in this local mode; a non-loopback
+listener is refused at startup unless `VENI_API_TOKEN` is set. The token is
+checked with a constant-time bearer/`X-Veni-Token` comparison. Open
+<http://127.0.0.1:8087/> in a browser.
+
+Configuration is through environment variables:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `VENI_HOST` | `127.0.0.1` | Listen address. |
+| `VENI_PORT` | `8087` | Listen port. |
+| `VENI_API_TOKEN` | unset | Required when binding a non-loopback address; protects `/crawl`. |
+| `VENI_ALLOW_PRIVATE_NETWORK` | unset/false | Allows private, loopback, link-local, and other non-public targets. Use only for a trusted local test. |
+
+For example, to crawl a deliberately local fixture while keeping the process
+bound to loopback:
+
+```sh
+VENI_ALLOW_PRIVATE_NETWORK=true go run .
+```
+
+That override removes an important SSRF protection. Never enable it for a
+shared or internet-facing process.
+
+### Actual demo routes
+
+| Route | Method | Description |
+| --- | --- | --- |
+| `/` | `GET` | HTML crawler form. |
+| `/crawl?url=<absolute-http(s)-url>&depth=<1..3>&path=<json-array>` | `GET` | Fetches a page and returns a JSON `CrawlNode` tree. `path` is optional and is used for the displayed breadcrumb. |
+| `/static/app.js`, `/static/style.css` | `GET` | Demo assets. Other files under `static/` are served by Go's file server. |
+
+Example request:
+
+```sh
+curl 'http://127.0.0.1:8087/crawl?url=https%3A%2F%2Fexample.com&depth=1'
+```
+
+The response contains `url`, `title`, a short text-only `content` summary,
+`depth`, `path`, and child `links` nodes. The browser UI builds the result
+tree with DOM nodes and `textContent`; fetched titles, URLs, and text are not
+inserted as raw HTML.
+
+### Crawler limits and security boundaries
+
+The demo applies defensive limits, but it is still a developer tool:
+
+- Only `http` and `https` URLs are accepted.
+- By default, hostnames and every resolved address are checked to reject
+  loopback, private, link-local, unspecified, multicast, and other
+  non-global addresses. Redirects are checked again and limited to five hops.
+- Requests have a timeout, a bounded response body (1 MiB), a maximum depth
+  of 3, and at most 10 links per page.
+- HTML is summarized with small regular expressions; this is not a full HTML
+  parser and the extracted text is not a security sanitizer.
+- A request can trigger at most 128 page visits and 8 MiB of response data,
+  with a small process-wide concurrency gate. Request cancellation propagates
+  to child requests. These are safety limits, not a general-purpose crawl
+  service.
+- There is no authorization model, per-user cache, robots.txt handling, or
+  durable job queue. The in-memory cache is small and best-effort.
+- The browser code treats all crawler values as text, but any page fetched by
+  the server is still untrusted input. Do not add a public deployment without
+  an allowlist, authentication, egress controls, and an appropriate reverse
+  proxy/TLS policy.
+
+### Container image
+
+The Dockerfile uses `golang:1.21-alpine`, matching the `go 1.21` directive in
+`go.mod`, and builds the module with `go build .`:
+
+```sh
+docker build -t veni-demo .
+docker run --rm -p 127.0.0.1:8087:8087 \
+  -e VENI_API_TOKEN='replace-with-a-long-random-token' \
+  veni-demo
+```
+
+The container listens on `0.0.0.0:8087` internally so the published port
+works. Set `VENI_API_TOKEN` at runtime; otherwise startup refuses the
+non-loopback bind. The example deliberately publishes it only to host loopback.
+Add `--network`/egress policy appropriate for the environment if testing
+private fixtures; do not make the container internet-accessible by default.
+
+## Checks
+
+From this directory:
+
+```sh
+gofmt -w main.go
+go test ./...
+node --check veni.js
+node --check static/app.js
+```
+
+`go test ./...` covers the crawler helpers and focused URL/security tests.
+There is no npm package, bundler, or browser test suite in this repository.
