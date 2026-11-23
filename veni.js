@@ -23,7 +23,7 @@
   // A valid custom-element name: lowercase, starts with a letter, contains
   // at least one hyphen, and ends alphanumeric. This is the exact constraint
   // customElements.define enforces, so anything we register must match.
-  var TAG_RE = /^[a-z][a-z0-9]*-[a-z0-9-]*$/;
+  var TAG_RE = /^[a-z][a-z0-9]*-[a-z0-9-]*[a-z0-9]$/;
 
   function isCustomTag(name) {
     return TAG_RE.test(name);

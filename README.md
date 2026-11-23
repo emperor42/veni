@@ -1,195 +1,63 @@
 # VENI
 
-VENI is two small, independent pieces:
+VENI has two independent pieces:
 
-1. `veni.js` is a browser helper for discovering and registering custom-element tags already present in a page.
-2. `main.go` is an optional visual web-crawler demo. It is useful for trying the browser UI locally; it is not the component library and it is not a production web-crawler service.
+1. `veni.js` — a dependency-free browser helper for discovering and registering custom-element tags already present in a page.
+2. `main.go` — an optional Go crawler demo with a browser UI.
 
-## Overview
+The browser helper needs no server. The Go demo is a local development tool, not a public crawling service.
 
-`veni` is a Go backend service that provides APIs for custom element discovery and management, serving as the foundation for the VENI browser utility.
+Loopback and container-publishing rules for all six demos: [`../docs/LOCAL-DEMOS.md`](../docs/LOCAL-DEMOS.md). Runnable scripts and a loopback-only Compose file: [`../examples`](../examples/README.md).
 
-## Features
+## Browser helper (`veni.js`)
 
-- **Custom Element Discovery**: API to discover and register custom elements
-- **Browser Integration**: RESTful APIs for browser component management
-- **Health Monitoring**: Built-in health check endpoint
-- **Rate Limiting**: Protection against abuse
-- **Security First**: Implements security best practices
+Exports `window.Veni` (class) and `window.veni` (instance), plus a CommonJS export for tests.
 
-## API Endpoints
+| Method | Purpose |
+| --- | --- |
+| `init(root)` | Scan the document and `<template>` contents; define tags with registered constructors and mark the rest pending. |
+| `define(name, ctor)`, `register(...)`, `defineAll(map)` | Register custom elements through `customElements.define`. Names must be lowercase, hyphenated, and end in a letter or digit. |
+| `discover(root)`, `pending()`, `list()`, `isDefined(name)` | Inspect discovered, pending, and defined tags. |
+| `autodefine()` | Define lightweight slot-only stubs for pending tags. |
+| `fromTemplate(templateEl, ctor)` | Derive a compliant tag name from `data-component`, `data-name`, or a `t-` prefixed template id. |
+| `on(name, event, cb)` | Wrap a constructor's `connectedCallback` with a hook. |
 
-### Discovery API
-- **GET /api/discover** - Discover custom elements (rate limited)
-- **GET /api/elements** - List all available elements
+`autodefine()` is not a sandbox: its shadow root contains only a slot.
 
-### System Status
-- **GET /health** - Health check endpoint
-
-## Technology Stack
-
-- **Backend**: Go
-- **API**: RESTful JSON
-- **Security**: HTTP security headers, rate limiting
-- **Deployment**: Docker ready
-
-## Running
-
-### Prerequisites
+## Go crawler demo
 
 ```bash
-go 1.21+
+go test ./...
+node --test veni_test.js
+go run .                 # http://127.0.0.1:8087
 ```
 
-### Building and Running
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `VENI_HOST` | `127.0.0.1` | Bind address. |
+| `VENI_PORT` | `8087` | Bind port. |
+| `VENI_API_TOKEN` | empty | Bearer/`X-Veni-Token` value required on `/crawl` when binding non-loopback. |
+| `VENI_ALLOW_PRIVATE_NETWORK` | `false` | Escape hatch for local fixtures. Never enable on a shared deployment. |
 
-```bash
-# Build the application
-go build
+Routes:
 
-# Run the application
-./veni
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /` | Browser UI. |
+| `GET /crawl?url=...&depth=...&path=...` | Crawl a public HTTP(S) URL. `depth` defaults to 2 and accepts 1–3; `path` is a JSON array of labels. |
+| `GET /static/` | UI assets. |
 
-# Or using Docker
-docker build -t veni .
-docker run -p 8082:8082 veni
-```
+The crawler validates absolute HTTP(S) URLs, resolves DNS and checks redirects against public-IP rules, and rejects loopback, private, link-local, unspecified, and multicast targets by default. It bounds depth, pages (128), total bytes (8 MiB), per-response bytes (1 MiB), links per page (10), concurrency, and cache size. Results are cached by target, depth, and path. The renderer uses `textContent`, so fetched values are never inserted as markup.
 
-### Testing
+See `SECURITY.md` for the trust model and the limitations of the token guard.
 
-```bash
-# Run tests
-go test -v ./...
+## Tests
 
-# Run with coverage
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
-```
+`go test ./...` and `node --test veni_test.js` both pass. The Go suite covers the crawler guardrails, URL validation, auth, and HTTP handlers; the JS suite covers discovery, registration, template naming, and lifecycle hooks.
 
-## Usage
+## Remaining gaps
 
-### Local Development
-
-```bash
-# Start the server
-./veni
-
-# Discover custom elements
-curl http://localhost:8082/api/discover
-
-# List all elements
-curl http://localhost:8082/api/elements
-
-# Check system health
-curl http://localhost:8082/health
-```
-
-### API Examples
-
-#### Discover Custom Elements
-```bash
-curl -X GET http://localhost:8082/api/discover
-```
-
-#### List Elements
-```bash
-curl -X GET http://localhost:8082/api/elements
-```
-
-#### Health Check
-```bash
-curl -X GET http://localhost:8082/health
-```
-
-## Deployment
-
-### Docker Deployment
-
-```Dockerfile
-FROM golang:1.21-alpine
-
-WORKDIR /app
-
-COPY go.mod go.sum ./
-COPY . .
-
-RUN go build -o veni main.go
-
-EXPOSE 8082
-
-CMD ["./veni"]
-```
-
-### Kubernetes Deployment
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: veni
-  labels:
-    app: veni
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: veni
-  template:
-    metadata:
-      labels:
-        app: veni
-    spec:
-      containers:
-      - name: veni
-        image: veni:latest
-        ports:
-        - containerPort: 8082
-        env:
-        - name: NODE_ENV
-          value: "production"
-```
-
-## Development
-
-### Project Structure
-
-```
-.
-├── main.go          # Main application
-├── main_test.go     # Tests
-├── go.mod          # Module configuration
-└── README.md       # Documentation
-```
-
-### Features Implemented
-
-- **Custom Element Discovery**: API for discovering browser custom elements
-- **Rate Limiting**: Protection against API abuse
-- **Security First**: Security headers and validation
-- **API-First**: RESTful API design
-- **Developer Experience**: Comprehensive testing
-
-## License
-
-MIT License
-
-## Future Enhancements
-
-- [ ] Add element categorization
-- [ ] Implement element metadata
-- [ ] Add batch discovery APIs
-- [ ] Implement element registration
-- [ ] Add performance monitoring
-- [ ] Integrate with browser extension
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Implement your changes
-4. Add tests
-5. Submit a pull request
-
-## Contact
-
-For questions or suggestions, please open an issue or contact the maintainer.
+- The token is a single shared demo credential, not per-user authorization. There is no rate limiting, CSRF protection, or TLS.
+- The crawler is a guardrail, not a complete SSRF defense. Enforce DNS and network policy at the host or container boundary too.
+- `autodefine()` does not make untrusted markup safe, and the browser helper does not sanitize HTML.
+- The stale prebuilt binary was removed; build from source with `go build .` (it is now gitignored).
